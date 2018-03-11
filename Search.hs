@@ -7,6 +7,7 @@ import qualified Data.Set as Set
 import Data.IntMap hiding (map)
 
 import Splendor
+import Data
 
 maxNode state depth alpha beta | depth <= 0 || gameOver state = eval state
 maxNode state depth alpha beta = go alpha (children state)
