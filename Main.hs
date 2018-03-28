@@ -6,7 +6,7 @@ import Data
 import Eval
 
 depth :: Int
-depth = 4 -- in turns, not plys
+depth = 5 -- in turns, not plys
 
 main :: IO ()
 main = mainloop initialState

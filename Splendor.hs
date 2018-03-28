@@ -5,7 +5,7 @@ module Splendor where
 import Control.Monad
 
 import qualified Data.Set as Set
-import Data.IntMap hiding (map)
+import Data.IntMap hiding (map, filter, foldr)
 import Debug.Trace
 
 import Data
@@ -25,35 +25,42 @@ initialState = State 1 (fromList [(1, emptyHand), (2, emptyHand)]) (GemBag 4 4 4
 
 emptyHand = Hand emptyBag emptyBag 0 Set.empty
 
+{-# INLINE addToBag #-}
 addToBag Diamond GemBag{..} = GemBag (diamond + 1) saphire emerald ruby onyx
 addToBag Saphire GemBag{..} = GemBag diamond (saphire + 1) emerald ruby onyx
 addToBag Emerald GemBag{..} = GemBag diamond saphire (emerald + 1) ruby onyx
 addToBag Ruby    GemBag{..} = GemBag diamond saphire emerald (ruby + 1) onyx
 addToBag Onyx    GemBag{..} = GemBag diamond saphire emerald ruby (onyx + 1)
 
+{-# INLINE bagHas #-}
 bagHas Diamond GemBag{..} = diamond >= 1
 bagHas Saphire GemBag{..} = saphire >= 1
 bagHas Emerald GemBag{..} = emerald >= 1
 bagHas Ruby    GemBag{..} = ruby >= 1
 bagHas Onyx    GemBag{..} = onyx >= 1
 
+{-# INLINE discount #-}
 discount cost by = GemBag (minZero $ diamond cost - diamond by)
                           (minZero $ saphire cost - saphire by)
                           (minZero $ emerald cost - emerald by)
                           (minZero $ ruby cost - ruby by)
                           (minZero $ onyx cost - onyx by)
 
+{-# INLINE bagSize #-}
 bagSize GemBag{..} = diamond + saphire + emerald + ruby + onyx
 
+{-# INLINE minZero #-}
 minZero a | a < 0 = 0
 minZero a = a
 
+{-# INLINE plus #-}
 plus a b = GemBag (diamond a + diamond b)
                   (saphire a + saphire b)
                   (emerald a + emerald b)
                   (ruby a + ruby b)
                   (onyx a + onyx b)
 
+{-# INLINE canAfford #-}
 canAfford a b = (diamond a >= diamond b) && (saphire a >= saphire b) && (emerald a >= emerald b) && (ruby a >= ruby b) && (onyx a >= onyx b)
 
 updateState (Many l) state@State{..} = Prelude.foldr (\update (_, state) -> updateState update state) (if player == 1 then Max else Min, state) l
@@ -81,6 +88,10 @@ updateState (NewCard card) State{..} = (if abs player == 1 then Max else Min, St
   where
     onTable' = Set.insert (fromNum card) onTable
     remaining' = Set.delete (fromNum card) remaining
+updateState (Magic gems scoreNew) State{..} = (if abs player == 1 then Max else Min, State (player `mod` players + 1) hands' bank onTable remaining)
+  where
+    hands' = adjust addTo player hands
+    addTo Hand{..} = Hand coins (foldr addToBag cards gems) (score + scoreNew) reserved
 
 stateUpdate = flip updateState
 
@@ -91,23 +102,20 @@ children state@State{..} | player < 0 = updates
 children State{..} = buyCards ++ if cs <= 7 then threeCoins else [] ++ if cs <= 8 then twoCoins else []
   where
     cs = bagSize (coins (hands ! player))
-    buyCards = do
-      card <- Set.toList onTable
-      guard $ coins (hands !  player) `canAfford` (cost card `discount` cards (hands ! player))
-      return $ BuyCard (number card)
+    buyCards = map (\c -> BuyCard (number c)) . Set.toList $ Set.filter canBuy onTable
     twoCoins = [TakeTwo Diamond | diamond bank >= 4]
                ++ [TakeTwo Saphire | saphire bank >= 4]
                ++ [TakeTwo Emerald | emerald bank >= 4]
                ++ [TakeTwo Ruby | ruby bank >= 4]
                ++ [TakeTwo Onyx | onyx bank >= 4]
-    threeCoins = [ TakeThree g1 g2 g3 | g1 <- [Diamond .. Onyx]
-                                      , g2 <- [Diamond .. Onyx]
-                                      , g3 <- [Diamond .. Onyx]
-                                      , g1 /= g2
-                                      , g1 /= g3
-                                      , g2 /= g3
-                                      , bagHas g1 bank
-                                      , bagHas g2 bank
-                                      , bagHas g3 bank
-                                      ]
+    threeCoins = map (uncurry3 TakeThree) $ filter (\(a, b, c) -> bagHas a bank && bagHas b bank && bagHas c bank) threeCoinSets
 
+
+threeCoinSets = [(g1, g2, g3) | g1 <- [Diamond .. Onyx]
+                              , g2 <- [Diamond .. Onyx]
+                              , g3 <- [Diamond .. Onyx]
+                              , g1 /= g2
+                              , g1 /= g3
+                              , g2 /= g3]
+
+uncurry3 f (a, b, c) = f a b c

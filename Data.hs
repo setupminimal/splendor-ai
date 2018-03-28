@@ -57,7 +57,7 @@ data Hand = Hand
   } deriving (Eq, Read)
 
 instance Show Hand where
-  show Hand{..} = "Hand:\n      coins: " ++ show coins ++ "\n      cards: " ++ show cards ++ "\n      score: " ++ show score
+  show Hand{..} = "\nHand:\n    coins: " ++ show coins ++ "\n    cards: " ++ show cards ++ "\n    score: " ++ show score
 
 fromNum 14 = Card 0 Saphire (GemBag 1 0 0 0 2) 14
 fromNum 74 = Card 0 Saphire (GemBag 0 1 3 1 0) 74
