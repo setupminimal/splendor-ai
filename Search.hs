@@ -1,10 +1,6 @@
-{-# LANGUAGE RecordWildCards, BangPatterns #-}
+{-# LANGUAGE BangPatterns #-}
 
 module Search where
-
-import Debug.Trace
-import qualified Data.Set as Set
-import Data.IntMap hiding (map)
 
 import Splendor
 import Data
@@ -41,7 +37,8 @@ chaosNode state depth alpha beta = (mean 0 0 . map (apply . dispatch . stateUpda
   where
     apply st = st (depth - 1) alpha beta
 
-mean 0    !sum [] = minBound
+mean :: (Integral t, Bounded t) => t -> t -> [t] -> t
+mean 0    _    [] = minBound
 mean !len !sum [] = sum `div` len
 mean !len !sum (x:xs) = mean (len + 1) (sum + x) xs
 

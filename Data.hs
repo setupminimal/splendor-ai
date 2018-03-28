@@ -6,7 +6,15 @@ import Data.Set hiding (lookup, map)
 import Data.IntMap hiding (lookup, map)
 import Data.Char (isDigit)
 
-data Edit = TakeTwo Gem | TakeThree Gem Gem Gem | BuyCard Int | NewCard Int | Quit | Many [Edit] deriving (Eq, Show, Read)
+data Edit = TakeTwo Gem
+  | TakeThree Gem Gem Gem
+  | BuyCard Int
+  | NewCard Int
+  | Quit
+  | Many [Edit]
+  | Magic [Gem] Int
+  | Reserve Card
+  deriving (Eq, Show, Read)
 
 data Next = Min | Max | Chaos deriving (Eq, Show)
 
@@ -45,7 +53,7 @@ data Hand = Hand
   { coins :: GemBag
   , cards :: GemBag
   , score :: Int
-  --, reserved :: Set Card
+  , reserved :: Set Card
   } deriving (Eq, Read)
 
 instance Show Hand where
