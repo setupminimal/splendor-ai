@@ -10,7 +10,8 @@ import Debug.Trace
 
 import Data
 
-eval State{..} = score (hands ! 1) - score (hands ! 2)
+{-# INLINE eval #-}
+eval State{..} = score (hands ! 1) -- score (hands ! 2)
 
 gameOver State{..} = any (\Hand{..} -> score >= 15) hands
 
@@ -83,7 +84,7 @@ updateState (BuyCard card) State{..} = (Chaos, State (-(player `mod` players + 1
     hands' = adjust addCard player hands
     bank' = bank `plus` payment
     payment = cost (fromNum card) `discount` cards (hands ! player)
-    addCard Hand{..} = Hand (coins `discount` payment) (addToBag (gem (fromNum card)) cards) (score + (100 * points (fromNum card)) + 1) reserved
+    addCard Hand{..} = Hand (coins `discount` payment) (addToBag (gem (fromNum card)) cards) (score + (100 * points (fromNum card)) + 10) reserved
 updateState (NewCard card) State{..} = (if abs player == 1 then Max else Min, State (if player < 0 then -player else player) hands bank onTable' remaining')
   where
     onTable' = Set.insert (fromNum card) onTable
@@ -103,6 +104,7 @@ children State{..} = buyCards ++ if cs <= 7 then threeCoins else [] ++ if cs <= 
   where
     cs = bagSize (coins (hands ! player))
     buyCards = map (\c -> BuyCard (number c)) . Set.toList $ Set.filter canBuy onTable
+    canBuy card = 0 == bagSize ( cost card `discount` (cards (hands ! player)) `discount` (coins (hands ! player)))
     twoCoins = [TakeTwo Diamond | diamond bank >= 4]
                ++ [TakeTwo Saphire | saphire bank >= 4]
                ++ [TakeTwo Emerald | emerald bank >= 4]
