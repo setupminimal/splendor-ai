@@ -4,21 +4,25 @@ module Search where
 
 import Splendor
 import Data
+import Eval
 
-import Debug.Trace
-
-dispatch (Chaos, x) depth alpha beta = fst $ chaosNode x depth alpha beta
-dispatch (Min, x) depth alpha beta = fst $ minNode x depth alpha beta
-dispatch (Max, x) depth alpha beta = fst $ maxNode x depth alpha beta
+dispatch player (Chaos, x) depth alpha beta = fst $ chaosNode player x depth alpha beta
+dispatch player (Min, x) depth alpha beta = fst $ minNode player x depth alpha beta
+dispatch player (Max, x) depth alpha beta = fst $ maxNode player x depth alpha beta
 
 f >< g = \(x, y) -> (f x, g y)
 dist f x = (f x, x)
 
-maxNode :: (Num a, Ord a) => State -> a -> Int -> Int -> (Int, Maybe Edit)
-maxNode state depth alpha beta | depth <= 0 || gameOver state = (eval state, Nothing)
-maxNode state depth alpha beta = value
+maxNode :: (Num a, Ord a) => Int -> State -> a -> Int -> Int -> (Int, Maybe Edit)
+maxNode player state depth alpha beta | depth <= 0 || gameOver state = (eval player state, Nothing)
+maxNode player state depth alpha beta = if null ch
+                                        then
+                                          (alpha, Nothing)
+                                        else
+                                          go alpha Nothing
+                                          . map ((dispatch (next player) >< Just)
+                                          . dist (stateUpdate state)) $ ch
   where
-    value = if null ch then (minBound, Nothing) else go alpha Nothing . map ((dispatch >< Just) . dist (stateUpdate state)) $ ch
     ch = children state
     go a ct [] = (a, ct)
     go a ct _ | beta <= a = (a, ct)
@@ -27,8 +31,14 @@ maxNode state depth alpha beta = value
         rem = st (depth - 1) a beta
 
 
-minNode state depth alpha beta | depth <= 0 || gameOver state = (eval state, Nothing)
-minNode state depth alpha beta = if null ch then (minBound, Nothing) else go beta Nothing . map ((dispatch >< Just) . dist (stateUpdate state)) $ ch
+minNode player state depth alpha beta | depth <= 0 || gameOver state = (eval player state, Nothing)
+minNode player state depth alpha beta = if null ch
+                                        then
+                                          (beta, Nothing)
+                                        else
+                                          go beta Nothing
+                                          . map ((dispatch (next player) >< Just)
+                                          . dist (stateUpdate state)) $ ch
   where
     ch = children state
     go b ct [] = (b, ct)
@@ -37,8 +47,8 @@ minNode state depth alpha beta = if null ch then (minBound, Nothing) else go bet
       where
         rem = st (depth - 1) alpha b
 
-chaosNode state depth alpha beta | depth <= 0 || gameOver state = (eval state, Nothing)
-chaosNode state depth alpha beta = (mean 0 0 . map (apply . dispatch . stateUpdate state) $ children state, Nothing)
+chaosNode player state depth alpha beta | depth <= 0 || gameOver state = (eval player state, Nothing)
+chaosNode player state depth alpha beta = (mean 0 0 . map (apply . dispatch (next player) . stateUpdate state) $ children state, Nothing)
   where
     apply st = st (depth - 1) alpha beta
 

@@ -10,8 +10,11 @@ import Debug.Trace
 
 import Data
 
+next p | p < 0 = -p
+next p = p `mod` players + 1
+
 {-# INLINE eval #-}
-eval State{..} = score (hands ! 1) -- score (hands ! 2)
+eval p State{..} = score (hands ! p)
 
 gameOver State{..} = any (\Hand{..} -> score >= 15) hands
 
@@ -64,6 +67,8 @@ plus a b = GemBag (diamond a + diamond b)
 {-# INLINE canAfford #-}
 canAfford a b = (diamond a >= diamond b) && (saphire a >= saphire b) && (emerald a >= emerald b) && (ruby a >= ruby b) && (onyx a >= onyx b)
 
+mkFirst state = state { player = 1, hands = fromList [(1, hands state ! 2), (2, hands state ! 1)]}
+
 updateState (Many l) state@State{..} = Prelude.foldr (\update (_, state) -> updateState update state) (if player == 1 then Max else Min, state) l
 updateState Quit state = error "Quitting ..."
 updateState (TakeTwo gem) State{..} = (if player == players then Max else Min, State (player `mod` players + 1) hands' bank' onTable remaining)
@@ -89,8 +94,9 @@ updateState (NewCard card) State{..} = (if abs player == 1 then Max else Min, St
   where
     onTable' = Set.insert (fromNum card) onTable
     remaining' = Set.delete (fromNum card) remaining
-updateState (Magic gems scoreNew) State{..} = (if abs player == 1 then Max else Min, State (player `mod` players + 1) hands' bank onTable remaining)
+updateState (Magic gems scoreNew cardsRemoved) State{..} = (if abs player == 1 then Max else Min, State (player `mod` players + 1) hands' bank onTable' remaining)
   where
+    onTable' = Set.filter (\x -> not $ number x `elem` cardsRemoved) onTable
     hands' = adjust addTo player hands
     addTo Hand{..} = Hand coins (foldr addToBag cards gems) (score + scoreNew) reserved
 
