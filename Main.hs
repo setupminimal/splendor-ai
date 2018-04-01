@@ -12,7 +12,7 @@ import Splendor
 import Data
 
 depth :: Int
-depth = 8 -- in turns, not plys
+depth = 4 --8 -- in turns, not plys
 
 main :: IO ()
 main = do
@@ -44,9 +44,12 @@ mainloop player state handle quiet = do
 
 lhf player state handle quiet Nothing = do
   putStrLn "I don't know what to do, something is wrong."
-  let move = head (children state)
-  putStrLn $ "Trying: " ++ show move
-  lhf player state handle quiet (Just move)
+  case children state of
+    [] -> putStrLn "There is no move to make."
+    (x:xs) -> do
+      let move = head (children state)
+      putStrLn $ "Trying: " ++ show move
+      lhf player state handle quiet (Just move)
 lhf player state handle quiet (Just move) = do
   let (_, state') = updateState move state
   quiet $ print state'

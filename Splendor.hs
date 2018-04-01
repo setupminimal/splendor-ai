@@ -16,7 +16,7 @@ next p = p `mod` players + 1
 {-# INLINE eval #-}
 eval p State{..} = score (hands ! p)
 
-gameOver State{..} = any (\Hand{..} -> score >= 15) hands
+gameOver State{..} = any (\Hand{..} -> score >= 1600) hands
 
 emptyBag = GemBag 0 0 0 0 0
 
@@ -89,7 +89,7 @@ updateState (BuyCard card) State{..} = (Chaos, State (-(player `mod` players + 1
     hands' = adjust addCard player hands
     bank' = bank `plus` payment
     payment = cost (fromNum card) `discount` cards (hands ! player)
-    addCard Hand{..} = Hand (coins `discount` payment) (addToBag (gem (fromNum card)) cards) (score + (100 * points (fromNum card)) + 10) reserved
+    addCard Hand{..} = Hand (coins `discount` payment) (addToBag (gem (fromNum card)) cards) (score + (100 * points (fromNum card)) + 1) reserved
 updateState (NewCard card) State{..} = (if abs player == 1 then Max else Min, State (if player < 0 then -player else player) hands bank onTable' remaining')
   where
     onTable' = Set.insert (fromNum card) onTable

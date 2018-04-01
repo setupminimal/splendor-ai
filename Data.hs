@@ -3,7 +3,7 @@
 module Data where
 
 import Data.Set hiding (lookup, map, fromList)
-import Data.IntMap hiding (lookup, map)
+import Data.IntMap hiding (lookup, map, findMin)
 import Data.Char (isDigit)
 
 data Edit = TakeTwo Gem
@@ -29,7 +29,7 @@ data State = State
   } deriving (Eq, Read)
 
 instance Show State where
-  show State{..} = "State:\n  player: " ++ show player ++ "\n  hands: " ++ show hands ++ "\n  bank: " ++ show bank ++ "\n  onTable: " ++ show onTable
+  show State{..} = "State:\n  player: " ++ show player ++ "\n  hands: " ++ show hands ++ "\n  bank: " ++ show bank ++ "\n  onTable: " ++ show onTable ++ "\n  nextUp: " ++ show (findMin remaining)
 
 data Card = Card
   { points :: Int
