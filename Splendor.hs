@@ -2,10 +2,14 @@
 
 module Splendor where
 
+import Prelude hiding (subtract)
+
 import Control.Monad
 
+import Data.List
 import qualified Data.Set as Set
 import Data.IntMap hiding (map, filter, foldr)
+import Data.Monoid
 import Debug.Trace
 
 import Data
@@ -18,23 +22,24 @@ eval p State{..} = score (hands ! p)
 
 gameOver State{..} = any (\Hand{..} -> score >= 1600) hands
 
-emptyBag = GemBag 0 0 0 0 0
+emptyBag = GemBag 0 0 0 0 0 0
 
 players :: Int
 players = 2
 
-initialCards = Set.fromList $ map fromNum [35, 82, 84, 28, 85, 19, 66, 21, 14, 74, 27, 17]
+initialCards = Set.fromList $ map fromNum [29, 49, 82, 72, 56, 26, 95, 71, 81, 65, 48, 27]
 initialInDeck = Set.difference (Set.fromList $ map fromNum [10..99]) initialCards
-initialState = State 1 (fromList [(1, emptyHand), (2, emptyHand)]) (GemBag 4 4 4 4 4) initialCards initialInDeck
+initialState = State 1 (fromList [(1, emptyHand), (2, emptyHand)]) (GemBag 4 4 4 4 4 0) initialCards initialInDeck
 
 emptyHand = Hand emptyBag emptyBag 0 Set.empty
 
 {-# INLINE addToBag #-}
-addToBag Diamond GemBag{..} = GemBag (diamond + 1) saphire emerald ruby onyx
-addToBag Saphire GemBag{..} = GemBag diamond (saphire + 1) emerald ruby onyx
-addToBag Emerald GemBag{..} = GemBag diamond saphire (emerald + 1) ruby onyx
-addToBag Ruby    GemBag{..} = GemBag diamond saphire emerald (ruby + 1) onyx
-addToBag Onyx    GemBag{..} = GemBag diamond saphire emerald ruby (onyx + 1)
+addToBag Diamond GemBag{..} = GemBag (diamond + 1) saphire emerald ruby onyx joker
+addToBag Saphire GemBag{..} = GemBag diamond (saphire + 1) emerald ruby onyx joker
+addToBag Emerald GemBag{..} = GemBag diamond saphire (emerald + 1) ruby onyx joker
+addToBag Ruby    GemBag{..} = GemBag diamond saphire emerald (ruby + 1) onyx joker
+addToBag Onyx    GemBag{..} = GemBag diamond saphire emerald ruby (onyx + 1) joker
+addToBag Joker   GemBag{..} = GemBag diamond saphire emerald ruby onyx (joker + 1)
 
 {-# INLINE bagHas #-}
 bagHas Diamond GemBag{..} = diamond >= 1
@@ -42,6 +47,7 @@ bagHas Saphire GemBag{..} = saphire >= 1
 bagHas Emerald GemBag{..} = emerald >= 1
 bagHas Ruby    GemBag{..} = ruby >= 1
 bagHas Onyx    GemBag{..} = onyx >= 1
+bagHas Joker   GemBag{..} = joker >= 1
 
 {-# INLINE discount #-}
 discount cost by = GemBag (minZero $ diamond cost - diamond by)
@@ -49,23 +55,45 @@ discount cost by = GemBag (minZero $ diamond cost - diamond by)
                           (minZero $ emerald cost - emerald by)
                           (minZero $ ruby cost - ruby by)
                           (minZero $ onyx cost - onyx by)
+                          (minZero $ joker cost - joker by)
+
+subtract total cost | not $ canAfford total cost = error $ "Tried taking more than there is " ++ show total ++ ": " ++ show cost
+subtract total cost | canAffordWithoutJokers total cost = discount total cost
+subtract total cost = GemBag diamonds' saphires' emeralds' rubies' onyx' joker'
+  where
+    diamonds' = minZero $ diamond total - diamond cost
+    saphires' = minZero $ saphire total - saphire cost
+    emeralds' = minZero $ emerald total - emerald cost
+    rubies' = minZero $ ruby total - ruby cost
+    onyx' = minZero $ onyx total - onyx cost
+    joker' = (-) (joker total) . getSum $ (Sum . deficit $ diamond total - diamond cost)
+                                       <> (Sum . deficit $ saphire total - saphire cost)
+                                       <> (Sum . deficit $ emerald total - emerald cost)
+                                       <> (Sum . deficit $ ruby total - ruby cost)
+                                       <> (Sum . deficit $ onyx total - onyx cost)
+    deficit x | x > 0 = 0
+    deficit x = -x
 
 {-# INLINE bagSize #-}
-bagSize GemBag{..} = diamond + saphire + emerald + ruby + onyx
+bagSize GemBag{..} = diamond + saphire + emerald + ruby + onyx + joker
 
 {-# INLINE minZero #-}
 minZero a | a < 0 = 0
 minZero a = a
 
+plus :: GemBag -> GemBag -> GemBag
 {-# INLINE plus #-}
 plus a b = GemBag (diamond a + diamond b)
                   (saphire a + saphire b)
                   (emerald a + emerald b)
                   (ruby a + ruby b)
                   (onyx a + onyx b)
+                  (joker a + joker b)
 
 {-# INLINE canAfford #-}
-canAfford a b = (diamond a >= diamond b) && (saphire a >= saphire b) && (emerald a >= emerald b) && (ruby a >= ruby b) && (onyx a >= onyx b)
+canAfford a b = (diamond a - diamond b) + (saphire a - saphire b) + (emerald a - emerald b) + (ruby a - ruby b) + (onyx a - onyx b) <= joker a
+
+canAffordWithoutJokers a b = (diamond a >= diamond b) && (saphire a >= saphire b) && (emerald a >= emerald b) && (ruby a >= ruby b) && (onyx a >= onyx b)
 
 mkFirst state = state { player = 1, hands = fromList [(1, hands state ! 2), (2, hands state ! 1)]}
 
@@ -74,22 +102,26 @@ updateState Quit state = error "Quitting ..."
 updateState (TakeTwo gem) State{..} = (if player == players then Max else Min, State (player `mod` players + 1) hands' bank' onTable remaining)
   where
     hands' = adjust tt player hands
-    bank' = bank `discount` gemBag
+    bank' = bank `subtract` gemBag
     tt Hand{..} = Hand (coins `plus` gemBag) cards score reserved
     gemBag = addToBag gem (addToBag gem emptyBag)
-updateState (TakeThree g1 g2 g3) State{..} = (if player == players then Max else Min, State (player `mod` players + 1) hands' bank' onTable remaining)
+updateState (Take gs) State{..} = (if player == players then Max else Min, State (player `mod` players + 1) hands' bank' onTable remaining)
   where
     hands' = adjust tt player hands
-    bank' = bank `discount` gemBag
+    bank' = bank `subtract` gemBag
     tt Hand{..} = Hand (coins `plus` gemBag) cards score reserved
-    gemBag = addToBag g1 (addToBag g2 (addToBag g3 emptyBag))
+    gemBag = Prelude.foldr addToBag emptyBag gs
 updateState (BuyCard card) State{..} = (Chaos, State (-(player `mod` players + 1)) hands' bank' onTable' remaining)
   where
     onTable' = Set.delete (fromNum card) onTable
     hands' = adjust addCard player hands
     bank' = bank `plus` payment
     payment = cost (fromNum card) `discount` cards (hands ! player)
-    addCard Hand{..} = Hand (coins `discount` payment) (addToBag (gem (fromNum card)) cards) (score + (100 * points (fromNum card)) + 1) reserved
+    addCard Hand{..} = Hand (coins `subtract` payment) (addToBag (gem (fromNum card)) cards) (score + (100 * points (fromNum card)) + 1) reserved
+updateState (Reserve card) State{..} = (Chaos, State (-(player `mod` players + 1)) hands' bank onTable remaining)
+  where
+    hands' = adjust addReserved player hands
+    addReserved hand = hand { reserved = Set.insert (fromNum card) (reserved hand), coins = addToBag Joker (coins hand) }
 updateState (NewCard card) State{..} = (if abs player == 1 then Max else Min, State (if player < 0 then -player else player) hands bank onTable' remaining')
   where
     onTable' = Set.insert (fromNum card) onTable
@@ -106,24 +138,22 @@ stateUpdate = flip updateState
 children state@State{..} | player < 0 = updates
   where
     updates = [NewCard (number card) | card <- Set.toList remaining]
-children State{..} = buyCards ++ if cs <= 7 then threeCoins else [] ++ if cs <= 8 then twoCoins else []
+children State{..} = buyCards ++ threeCoins ++ if cs <= 8 then twoCoins else [] ++ if cs <= 9 then reserveds else []
   where
     cs = bagSize (coins (hands ! player))
-    buyCards = map (\c -> BuyCard (number c)) . Set.toList $ Set.filter canBuy onTable
+    buyCards = map (\c -> BuyCard (number c)) . Set.toList $ Set.filter canBuy (Set.union onTable (reserved (hands ! player)))
     canBuy card = 0 == bagSize ( cost card `discount` (cards (hands ! player)) `discount` (coins (hands ! player)))
     twoCoins = [TakeTwo Diamond | diamond bank >= 4]
                ++ [TakeTwo Saphire | saphire bank >= 4]
                ++ [TakeTwo Emerald | emerald bank >= 4]
                ++ [TakeTwo Ruby | ruby bank >= 4]
                ++ [TakeTwo Onyx | onyx bank >= 4]
-    threeCoins = map (uncurry3 TakeThree) $ filter (\(a, b, c) -> bagHas a bank && bagHas b bank && bagHas c bank) threeCoinSets
+    threeCoins = map (Take) $ filter (all (flip bagHas $ bank) <&&> (\x -> length x + cs <= 10)) threeCoinSets
+    reserveds = map (Reserve . number) . Set.toList $ onTable
 
+coinSet n = filter (\x -> length (nub x) == n)$ replicateM n [Diamond .. Onyx]
+coinSet' = map coinSet [1..]
+coinSetCumulative = scanl (++) [] coinSet'
+threeCoinSets = reverse $ coinSetCumulative !! 3
 
-threeCoinSets = [(g1, g2, g3) | g1 <- [Diamond .. Onyx]
-                              , g2 <- [Diamond .. Onyx]
-                              , g3 <- [Diamond .. Onyx]
-                              , g1 /= g2
-                              , g1 /= g3
-                              , g2 /= g3]
-
-uncurry3 f (a, b, c) = f a b c
+a <&&> b = \x -> a x && b x
