@@ -78,8 +78,9 @@ subtract total cost = GemBag diamonds' saphires' emeralds' rubies' onyx' joker'
 bagSize GemBag{..} = diamond + saphire + emerald + ruby + onyx + joker
 
 {-# INLINE minZero #-}
-minZero a | a < 0 = 0
-minZero a = a
+minZero = max 0
+
+maxZero = min 0
 
 plus :: GemBag -> GemBag -> GemBag
 {-# INLINE plus #-}
@@ -91,7 +92,7 @@ plus a b = GemBag (diamond a + diamond b)
                   (joker a + joker b)
 
 {-# INLINE canAfford #-}
-canAfford a b = (diamond a - diamond b) + (saphire a - saphire b) + (emerald a - emerald b) + (ruby a - ruby b) + (onyx a - onyx b) <= joker a
+canAfford a b = (maxZero $ diamond a - diamond b) + (maxZero $ saphire a - saphire b) + (maxZero $ emerald a - emerald b) + (maxZero $ ruby a - ruby b) + (maxZero $ onyx a - onyx b) >= -(joker a)
 
 canAffordWithoutJokers a b = (diamond a >= diamond b) && (saphire a >= saphire b) && (emerald a >= emerald b) && (ruby a >= ruby b) && (onyx a >= onyx b)
 

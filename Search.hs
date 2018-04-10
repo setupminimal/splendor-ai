@@ -6,7 +6,7 @@ import Debug.Trace
 
 import Splendor
 import Data
-import Eval
+--import Eval
 
 dispatch player (Chaos, x) depth alpha beta = fst $ chaosNode player x depth alpha beta
 dispatch player (Min, x) depth alpha beta = fst $ minNode player x depth alpha beta
