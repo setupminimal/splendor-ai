@@ -3,6 +3,7 @@ all: Data.hs Main.hs Splendor.hs Search.hs
 
 duel: Data.hs Splendor.hs Search.hs Data.hs
 	ghc -O3 Duel.hs -threaded
+	./Duel
 
 time: all
 	echo Quit | time ./Main +RTS -N8

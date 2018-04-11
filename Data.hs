@@ -14,6 +14,7 @@ data Edit = TakeTwo Gem
   | Many [Edit]
   | Magic [Gem] Int [Int] -- Gems, Score, and Cards-removed-from-table
   | Reserve Int
+  | Win
   deriving (Eq, Show, Read)
 
 data Next = Min | Max | Chaos deriving (Eq, Show)
@@ -48,7 +49,7 @@ data GemBag = GemBag
   } deriving (Eq, Ord, Read)
 
 instance Show GemBag where
-    show GemBag{..} = show diamond ++ "D " ++ show saphire ++ "S " ++ show emerald ++ "E " ++ show ruby ++ "R " ++ show onyx ++ "O"
+    show GemBag{..} = show diamond ++ "D " ++ show saphire ++ "S " ++ show emerald ++ "E " ++ show ruby ++ "R " ++ show onyx ++ "O " ++ show joker ++ "J"
 
 data Hand = Hand
   { coins :: GemBag

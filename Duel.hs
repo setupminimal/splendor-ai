@@ -13,9 +13,10 @@ main :: IO ()
 main = mainloop 1 initialState
 
 mainloop p state = do
+  if null $ children state then print state else return ()
   let (escore, ed) = maxNode p state depth minBound maxBound
-  putStrLn $ "Player " ++ show p ++ ": " ++ show ed ++ "\t\t(" ++ show escore ++ ")"
-  if ed == Nothing then putStrLn "Done"
+  putStrLn $ "Player " ++ show p ++ ": " ++ show ed ++ "\t\t\t\t(" ++ show escore ++ ")"
+  if ed == Nothing || ed == Just Win then putStrLn $ "Done: " ++ show ed
     else
     let (next, state') = updateState (fromJust ed) state in
       case next of
