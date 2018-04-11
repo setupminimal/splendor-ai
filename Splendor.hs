@@ -127,6 +127,7 @@ updateState (NewCard card) State{..} = (if abs player == 1 then Max else Min, St
   where
     onTable' = Set.insert (fromNum card) onTable
     remaining' = Set.delete (fromNum card) remaining
+updateState NoNewCard state = (if abs (player state) == 1 then Max else Min, state { player = if player state < 0 then -(player state) else player state })
 updateState (Magic gems scoreNew cardsRemoved) State{..} = (if abs player == 1 then Max else Min, State (player `mod` players + 1) hands' bank onTable' remaining)
   where
     onTable' = Set.filter (\x -> not $ number x `elem` cardsRemoved) onTable

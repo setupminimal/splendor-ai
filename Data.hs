@@ -10,6 +10,7 @@ data Edit = TakeTwo Gem
   | Take [Gem]
   | BuyCard Int
   | NewCard Int
+  | NoNewCard
   | Quit
   | Many [Edit]
   | Magic [Gem] Int [Int] -- Gems, Score, and Cards-removed-from-table
@@ -37,7 +38,10 @@ data Card = Card
   , gem :: Gem
   , cost :: GemBag -- hope this is faster than a generic bag
   , number :: Int
-  } deriving (Eq, Ord)
+  } deriving (Eq)
+
+instance Ord Card where
+  a `compare` b = (number a) `compare` (number b)
 
 data GemBag = GemBag
   { diamond :: !Int
