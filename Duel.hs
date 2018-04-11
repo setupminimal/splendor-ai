@@ -15,11 +15,16 @@ import Data
 
 depth = 4 -- fast turns
 
+algo1 = evalBasic
+algo2 = evalBasic
+
+trials = 75
+
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
-  n <- parallel . map (\i -> unexceptional (mainloop i initialState)) $ (replicate 250 1) ++ (replicate 250 2)
-  putStrLn $ "\nAlgorithm 1 won " ++ show (length . filter (== 1) $ n) ++ " out of 500 matches."
+  n <- parallel . map (\i -> unexceptional (mainloop i initialState)) $ (replicate trials 1) ++ (replicate trials 2)
+  putStrLn $ "\nAlgorithm 1 won " ++ show (length . filter (== 1) $ n) ++ " out of " ++ show $ 2 * trials++ " matches."
   stopGlobalPool
 
 unexceptional a = catch @SomeException
@@ -29,7 +34,7 @@ unexceptional a = catch @SomeException
 mainloop :: Int -> State -> IO Int
 mainloop p state = do
   if null $ children state then print state else return ()
-  let (escore, ed) = maxNode p state depth minBound maxBound
+  let (escore, ed) = maxNode algo1 p state depth minBound maxBound
   if ed == Nothing || ed == Just Win then (putStr $ if p == 1 then "#" else ".") >> return p
     else
     let (next, state') = updateState (fromJust ed) state in

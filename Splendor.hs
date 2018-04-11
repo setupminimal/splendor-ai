@@ -17,8 +17,7 @@ import Data
 next p | p < 0 = -p
 next p = p `mod` players + 1
 
-{-# INLINE eval #-}
-eval p State{..} = score (hands ! p)
+evalBasic p State{..} = score (hands ! p)
 
 gameOver State{..} = any (\Hand{..} -> score >= 1600) hands
 
