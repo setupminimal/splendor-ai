@@ -13,7 +13,7 @@ data Edit = TakeTwo Gem
   | Quit
   | Many [Edit]
   | Magic [Gem] Int [Int] -- Gems, Score, and Cards-removed-from-table
-  | Reserve Int
+  | Reserve Bool Int
   | Win
   deriving (Eq, Show, Read)
 

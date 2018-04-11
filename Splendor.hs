@@ -119,10 +119,10 @@ updateState (BuyCard card) State{..} = (Chaos, State (-(player `mod` players + 1
     bank' = bank `plus` payment
     payment = cost (fromNum card) `discount` cards (hands ! player)
     addCard Hand{..} = Hand (coins `subtract` payment) (addToBag (gem (fromNum card)) cards) (score + (100 * points (fromNum card)) + 1) reserved
-updateState (Reserve card) State{..} = (Chaos, State (-(player `mod` players + 1)) hands' bank onTable remaining)
+updateState (Reserve bool card) State{..} = (Chaos, State (-(player `mod` players + 1)) hands' bank onTable remaining)
   where
     hands' = adjust addReserved player hands
-    addReserved hand = hand { reserved = Set.insert (fromNum card) (reserved hand), coins = addToBag Joker (coins hand) }
+    addReserved hand = hand { reserved = Set.insert (fromNum card) (reserved hand), coins = if bool then addToBag Joker (coins hand) else (coins hand) }
 updateState (NewCard card) State{..} = (if abs player == 1 then Max else Min, State (if player < 0 then -player else player) hands bank onTable' remaining')
   where
     onTable' = Set.insert (fromNum card) onTable
@@ -139,7 +139,7 @@ stateUpdate = flip updateState
 children state@State{..} | player < 0 = updates
   where
     updates = [NewCard (number card) | card <- Set.toList remaining]
-children State{..} = buyCards ++ threeCoins ++ if cs <= 8 then twoCoins else [] ++ if cs <= 9 then reserveds else []
+children State{..} = buyCards ++ threeCoins ++ if cs <= 8 then twoCoins else [] ++ if cs <= 9 then reserveds else reservedNoJoke
   where
     cs = bagSize (coins (hands ! player))
     buyCards = map (\c -> BuyCard (number c)) . Set.toList $ Set.filter canBuy (Set.union onTable (reserved (hands ! player)))
@@ -150,7 +150,8 @@ children State{..} = buyCards ++ threeCoins ++ if cs <= 8 then twoCoins else [] 
                ++ [TakeTwo Ruby | ruby bank >= 4]
                ++ [TakeTwo Onyx | onyx bank >= 4]
     threeCoins = map (Take) $ filter (all (flip bagHas $ bank) <&&> (\x -> length x + cs <= 10)) threeCoinSets
-    reserveds = map (Reserve . number) . Set.toList $ onTable
+    reserveds = map (Reserve True . number) . Set.toList $ onTable
+    reservedNoJoke = map (Reserve False . number) . Set.toList $ onTable
 
 coinSet n = filter (\x -> length (nub x) == n)$ replicateM n [Diamond .. Onyx]
 coinSet' = map coinSet [1..]
