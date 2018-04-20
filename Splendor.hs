@@ -17,7 +17,26 @@ import Data
 next p | p < 0 = -p
 next p = p `mod` players + 1
 
+evalBasic :: Int -> State -> Int
 evalBasic p State{..} = score (hands ! p)
+
+evalRelative :: Int -> State -> Int
+evalRelative 1 State{..} = score (hands ! 1) - score (hands ! 2)
+evalRelative 2 State{..} = score (hands ! 2) - score (hands ! 1)
+
+evalCardBuy :: Int -> State -> Int
+evalCardBuy p State{..} = buyCards
+  where
+    buyCards = Set.size $ Set.filter canBuy (Set.union onTable (reserved (hands ! p)))
+    canBuy card = 0 == bagSize ( cost card `discount` (cards (hands ! p)) `discount` (coins (hands ! p)))
+
+--  100 winLoss + 1.5 Points + 2.5 Nobles + Prestige + Gems
+-- Note - no nobles yet.
+evalJoshua :: Int -> State -> Int
+evalJoshua p State{..} = (if s >= 1600 then 100 else 0) + (s `div` 100) * 2 + bagSize (cards (hands ! p)) + bagSize (coins (hands ! p))
+  where
+    s = score (hands ! p)
+
 
 gameOver State{..} = any (\Hand{..} -> score >= 1600) hands
 

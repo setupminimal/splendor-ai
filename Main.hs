@@ -12,7 +12,7 @@ import Splendor
 import Data
 
 depth :: Int
-depth = 4 -- for quick dev 7 -- in turns, not plys
+depth = 7 -- in turns, not plys
 
 main :: IO ()
 main = do
@@ -62,4 +62,4 @@ lhf player state quiet (Just move) = do
     other -> let (_, state'') = updateState other state' in mainloop player state'' quiet
 
 bestFrom :: State -> Int -> (Int, Maybe Edit)
-bestFrom state player = maxNode player state depth minBound maxBound
+bestFrom state player = maxNode Min evalJoshua player state depth minBound maxBound

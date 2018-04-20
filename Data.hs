@@ -16,7 +16,7 @@ data Edit = TakeTwo Gem
   | Magic [Gem] Int [Int] -- Gems, Score, and Cards-removed-from-table
   | Reserve Bool Int
   | Win
-  deriving (Eq, Show, Read)
+  deriving (Eq, Show, Read, Ord)
 
 data Next = Min | Max | Chaos deriving (Eq, Show)
 
