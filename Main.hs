@@ -53,7 +53,7 @@ lhf player state quiet (Just move) = do
   let (_, state') = updateState move state
   quiet $ print state'
   quiet $ putStrLn "Do: "
-  putStrLn $ show move
+  print move
   x <- catch @SomeException
        (readLn :: IO Edit)
        (\_ -> putStrLn "What?" >> mainloop player state quiet >> return Quit)

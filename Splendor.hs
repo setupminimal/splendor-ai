@@ -28,7 +28,7 @@ evalCardBuy :: Int -> State -> Int
 evalCardBuy p State{..} = buyCards
   where
     buyCards = Set.size $ Set.filter canBuy (Set.union onTable (reserved (hands ! p)))
-    canBuy card = 0 == bagSize ( cost card `discount` (cards (hands ! p)) `discount` (coins (hands ! p)))
+    canBuy card = 0 == bagSize ((cost card `discount` cards (hands ! p)) `discount` coins (hands ! p))
 
 --  100 winLoss + 1.5 Points + 2.5 Nobles + Prestige + Gems
 -- Note - no nobles yet.
@@ -110,12 +110,15 @@ plus a b = GemBag (diamond a + diamond b)
                   (joker a + joker b)
 
 {-# INLINE canAfford #-}
+{-# ANN canAfford "HLint: ignore" #-}
 canAfford a b = (maxZero $ diamond a - diamond b) + (maxZero $ saphire a - saphire b) + (maxZero $ emerald a - emerald b) + (maxZero $ ruby a - ruby b) + (maxZero $ onyx a - onyx b) >= -(joker a)
 
 canAffordWithoutJokers a b = (diamond a >= diamond b) && (saphire a >= saphire b) && (emerald a >= emerald b) && (ruby a >= ruby b) && (onyx a >= onyx b)
 
 mkFirst state = state { player = 1, hands = fromList [(1, hands state ! 2), (2, hands state ! 1)]}
 
+
+{-# ANN updateState "HLint: ignore Reduce duplication" #-}
 updateState (Many l) state@State{..} = Prelude.foldr (\update (_, state) -> updateState update state) (if player == 1 then Max else Min, state) l
 updateState Quit state = error "Quitting ..."
 updateState (TakeTwo gem) State{..} = (if player == players then Max else Min, State (player `mod` players + 1) hands' bank' onTable remaining)
@@ -140,7 +143,7 @@ updateState (BuyCard card) State{..} = (Chaos, State (-(player `mod` players + 1
 updateState (Reserve bool card) State{..} = (Chaos, State (-(player `mod` players + 1)) hands' bank onTable remaining)
   where
     hands' = adjust addReserved player hands
-    addReserved hand = hand { reserved = Set.insert (fromNum card) (reserved hand), coins = if bool then addToBag Joker (coins hand) else (coins hand) }
+    addReserved hand = hand { reserved = Set.insert (fromNum card) (reserved hand), coins = if bool then addToBag Joker (coins hand) else coins hand }
 updateState (NewCard card) State{..} = (if abs player == 1 then Max else Min, State (if player < 0 then -player else player) hands bank onTable' remaining')
   where
     onTable' = Set.insert (fromNum card) onTable
@@ -148,7 +151,7 @@ updateState (NewCard card) State{..} = (if abs player == 1 then Max else Min, St
 updateState NoNewCard state = (if abs (player state) == 1 then Max else Min, state { player = if player state < 0 then -(player state) else player state })
 updateState (Magic gems scoreNew cardsRemoved) State{..} = (if abs player == 1 then Max else Min, State (player `mod` players + 1) hands' bank onTable' remaining)
   where
-    onTable' = Set.filter (\x -> not $ number x `elem` cardsRemoved) onTable
+    onTable' = Set.filter (\x -> number x `notElem` cardsRemoved) onTable
     hands' = adjust addTo player hands
     addTo Hand{..} = Hand coins (foldr addToBag cards gems) (score + scoreNew) reserved
 
@@ -161,14 +164,14 @@ children state@State{..} | player < 0 = updates
 children State{..} = buyCards ++ threeCoins ++ if cs <= 8 then twoCoins else [] ++ if cs <= 9 then reserveds else reservedNoJoke
   where
     cs = bagSize (coins (hands ! player))
-    buyCards = map (\c -> BuyCard (number c)) . Set.toList $ Set.filter canBuy (Set.union onTable (reserved (hands ! player)))
-    canBuy card = 0 == bagSize ( cost card `discount` (cards (hands ! player)) `discount` (coins (hands ! player)))
+    buyCards = map (BuyCard . number) . Set.toList $ Set.filter canBuy (Set.union onTable (reserved (hands ! player)))
+    canBuy card = 0 == bagSize ((cost card `discount` cards (hands ! player)) `discount` coins (hands ! player))
     twoCoins = [TakeTwo Diamond | diamond bank >= 4]
                ++ [TakeTwo Saphire | saphire bank >= 4]
                ++ [TakeTwo Emerald | emerald bank >= 4]
                ++ [TakeTwo Ruby | ruby bank >= 4]
                ++ [TakeTwo Onyx | onyx bank >= 4]
-    threeCoins = map (Take) $ filter (all (flip bagHas $ bank) <&&> (\x -> length x + cs <= 10)) threeCoinSets
+    threeCoins = map Take $ filter (all (`bagHas` bank) <&&> (\x -> length x + cs <= 10)) threeCoinSets
     reserveds = map (Reserve True . number) . Set.toList $ onTable
     reservedNoJoke = map (Reserve False . number) . Set.toList $ onTable
 

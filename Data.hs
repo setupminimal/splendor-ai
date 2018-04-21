@@ -2,8 +2,8 @@
 
 module Data where
 
-import Data.Set hiding (lookup, map, fromList)
-import Data.IntMap hiding (lookup, map, findMin)
+import Data.Set hiding (map, fromList)
+import Data.IntMap hiding (map, findMin)
 import Data.Char (isDigit)
 
 data Edit = TakeTwo Gem
@@ -41,7 +41,7 @@ data Card = Card
   } deriving (Eq)
 
 instance Ord Card where
-  a `compare` b = (number a) `compare` (number b)
+  a `compare` b = number a `compare` number b
 
 data GemBag = GemBag
   { diamond :: !Int
