@@ -1,0 +1,34 @@
+
+   1/2   | Basic | Relative | CardBuy | Joshua
+Basic    |  ---  |    429   |    7    |   23
+Relative |  569  |    ---   |   15    |   38
+CardBuy  |  993  |    987   |   ---   |   912
+Joshua   |  970  |    971   |   800   |   ---
+
+(Wins out of 1000)
+
+Raw:
+
+Basic eval VS Basic eval - 479 / 1000 - 47.9%
+
+Basic VS Relative - 429
+Basic VS CardBuy - 7
+Basic VS Joshua - 23
+
+Relative vs Basic - 569
+Relative vs Card Buy - 15
+Relative vs Joshua - 38
+
+CardBuy vs Basic - 993
+CardBuy vs Relative - 987
+
+---
+
+
+Expectiminimax with alpha-beta search to 3 ply - 1.00 elapsed (1.24 CPU time) avg over 10 runs, 136% CPU
+Stochastic Expectiminimax with alpha-beta search to 3 ply - 1.00 (1.18 CPU time) avg over 10 runs, 130% CPU
+
+Plain Expectiminimax search - 20:20:29 elapsed (67503.79 CPU time) over 1 run, 104% CPU
+Stochastic Expectiminimax search - 19:53:47 elapsed (67059.14 CPU time) over 1 run, 106% CPU
+
+Expectiminimax with alpha-beta-gamma search to 3 ply - 0.91 elapsed (1.06 CPU time) avg over 10 runs, 136% CPU

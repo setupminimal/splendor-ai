@@ -1,0 +1,1 @@
+nix-shell -p (haskell.packages.ghc822.extend (self: super: {mkDerivation = expr: super.mkDerivation (expr // { enableLibraryProfiling = true; });})).ghcWithPackages (p: with p; [parallel]) -j4 --run ghc -O3 Main.hs -threaded -prof -fprof-auto -fprof-cafs
