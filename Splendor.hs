@@ -33,9 +33,10 @@ evalCardBuy p State{..} = buyCards
 --  100 winLoss + 1.5 Points + 2.5 Nobles + Prestige + Gems
 -- Note - no nobles yet.
 evalJoshua :: Int -> State -> Int
-evalJoshua p State{..} = (if s >= 1600 then 100 else 0) + (s `div` 100) * 2 + bagSize (cards (hands ! p)) + bagSize (coins (hands ! p))
+evalJoshua p State{..} = (if s >= 1600 then 1000 else if score (hands ! op) >= 1600 then minBound else 0) + (s `div` 100) * 20 + 10 * bagSize (cards (hands ! p)) + bagSize (coins (hands ! p))
   where
     s = score (hands ! p)
+    op = if p == 1 then 2 else 1
 
 
 gameOver State{..} = any (\Hand{..} -> score >= 1600) hands
@@ -45,15 +46,19 @@ emptyBag = GemBag 0 0 0 0 0 0
 players :: Int
 players = 2
 
-initialCards = Set.fromList $ map fromNum [29, 49, 82, 72, 56, 26, 95, 71, 81, 65, 48, 27]
+initialCards = Set.fromList $ map fromNum [88, 32, 69, 89, 38, 21, 60, 85, 29, 82, 90, 35]
 initialInDeck = Set.difference (Set.fromList $ map fromNum [10..99]) initialCards
-initialState = State 1 (fromList [(1, emptyHand), (2, emptyHand)]) (GemBag 4 4 4 4 4 0) initialCards initialInDeck
+
+graceHand = Hand (GemBag 2 2 1 1 1 1) (GemBag 0 0 1 1 1 0) 2 (Set.fromList [fromNum 39])
+aiHand = Hand (GemBag 1 1 2 3 2 0) (GemBag 0 0 2 0 1 0) 103 (Set.fromList [fromNum 12])
+
+initialState = State 1 (fromList [(1, aiHand), (2, graceHand)]) (GemBag 1 1 1 0 1 4) initialCards initialInDeck
 
 emptyHand = Hand emptyBag emptyBag 0 Set.empty
 
 {-# INLINE addToBag #-}
 addToBag Diamond GemBag{..} = GemBag (diamond + 1) saphire emerald ruby onyx joker
-addToBag Saphire GemBag{..} = GemBag diamond (saphire + 1) emerald ruby onyx joker
+addToBag Sapphire GemBag{..} = GemBag diamond (saphire + 1) emerald ruby onyx joker
 addToBag Emerald GemBag{..} = GemBag diamond saphire (emerald + 1) ruby onyx joker
 addToBag Ruby    GemBag{..} = GemBag diamond saphire emerald (ruby + 1) onyx joker
 addToBag Onyx    GemBag{..} = GemBag diamond saphire emerald ruby (onyx + 1) joker
@@ -61,7 +66,7 @@ addToBag Joker   GemBag{..} = GemBag diamond saphire emerald ruby onyx (joker + 
 
 {-# INLINE bagHas #-}
 bagHas Diamond GemBag{..} = diamond >= 1
-bagHas Saphire GemBag{..} = saphire >= 1
+bagHas Sapphire GemBag{..} = saphire >= 1
 bagHas Emerald GemBag{..} = emerald >= 1
 bagHas Ruby    GemBag{..} = ruby >= 1
 bagHas Onyx    GemBag{..} = onyx >= 1
@@ -117,6 +122,7 @@ canAffordWithoutJokers a b = (diamond a >= diamond b) && (saphire a >= saphire b
 
 mkFirst state = state { player = 1, hands = fromList [(1, hands state ! 2), (2, hands state ! 1)]}
 
+updateBank gem1 gem2 = GemBag ((4 - diamond gem1) - diamond gem2) ((4 - saphire gem1) - saphire gem2) ((4 - emerald gem1) - emerald gem2) ((4 - ruby gem1) - ruby gem2) ((4 - onyx gem1) - onyx gem2) ((5 - joker gem1) - joker gem2)
 
 {-# ANN updateState "HLint: ignore Reduce duplication" #-}
 updateState (Many l) state@State{..} = Prelude.foldr (\update (_, state) -> updateState update state) (if player == 1 then Max else Min, state) l
@@ -124,36 +130,39 @@ updateState Quit state = error "Quitting ..."
 updateState (TakeTwo gem) State{..} = (if player == players then Max else Min, State (player `mod` players + 1) hands' bank' onTable remaining)
   where
     hands' = adjust tt player hands
-    bank' = bank `subtract` gemBag
+    bank' = updateBank (coins (hands' ! 1)) (coins (hands' ! 2)) -- bank `subtract` gemBag
     tt Hand{..} = Hand (coins `plus` gemBag) cards score reserved
     gemBag = addToBag gem (addToBag gem emptyBag)
 updateState (Take gs) State{..} = (if player == players then Max else Min, State (player `mod` players + 1) hands' bank' onTable remaining)
   where
     hands' = adjust tt player hands
-    bank' = bank `subtract` gemBag
+    bank' = updateBank (coins (hands' ! 1)) (coins (hands' ! 2)) --bank `subtract` gemBag
     tt Hand{..} = Hand (coins `plus` gemBag) cards score reserved
     gemBag = Prelude.foldr addToBag emptyBag gs
 updateState (BuyCard card) State{..} = (Chaos, State (-(player `mod` players + 1)) hands' bank' onTable' remaining)
   where
     onTable' = Set.delete (fromNum card) onTable
     hands' = adjust addCard player hands
-    bank' = bank `plus` payment
+    bank' = updateBank (coins (hands' ! 1)) (coins (hands' ! 2))--bank `plus` payment
     payment = cost (fromNum card) `discount` cards (hands ! player)
-    addCard Hand{..} = Hand (coins `subtract` payment) (addToBag (gem (fromNum card)) cards) (score + (100 * points (fromNum card)) + 1) reserved
-updateState (Reserve bool card) State{..} = (Chaos, State (-(player `mod` players + 1)) hands' bank onTable remaining)
+    addCard Hand{..} = Hand (coins `subtract` payment) (addToBag (gem (fromNum card)) cards) (score + (100 * points (fromNum card)) + 1) (Set.delete (fromNum card) reserved)
+updateState (Reserve bool card) State{..} = (Chaos, State (-(player `mod` players + 1)) hands' bank' onTable' remaining)
   where
     hands' = adjust addReserved player hands
     addReserved hand = hand { reserved = Set.insert (fromNum card) (reserved hand), coins = if bool then addToBag Joker (coins hand) else coins hand }
+    onTable' = Set.delete (fromNum card) onTable
+    bank' = updateBank (coins (hands' ! 1)) (coins (hands' ! 2))
 updateState (NewCard card) State{..} = (if abs player == 1 then Max else Min, State (if player < 0 then -player else player) hands bank onTable' remaining')
   where
     onTable' = Set.insert (fromNum card) onTable
     remaining' = Set.delete (fromNum card) remaining
 updateState NoNewCard state = (if abs (player state) == 1 then Max else Min, state { player = if player state < 0 then -(player state) else player state })
-updateState (Magic gems scoreNew cardsRemoved) State{..} = (if abs player == 1 then Max else Min, State (player `mod` players + 1) hands' bank onTable' remaining)
+updateState (Magic gems scoreNew cardsRemoved bankNew) State{..} = (if abs player == 1 then Max else Min, State (player `mod` players + 1) hands' bank' onTable' remaining)
   where
     onTable' = Set.filter (\x -> number x `notElem` cardsRemoved) onTable
     hands' = adjust addTo player hands
     addTo Hand{..} = Hand coins (foldr addToBag cards gems) (score + scoreNew) reserved
+    bank' = bankNew
 
 stateUpdate = flip updateState
 
@@ -161,13 +170,14 @@ stateUpdate = flip updateState
 children state@State{..} | player < 0 = updates
   where
     updates = [NewCard (number card) | card <- Set.toList remaining]
-children State{..} = buyCards ++ threeCoins ++ if cs <= 8 then twoCoins else [] ++ if cs <= 9 then reserveds else reservedNoJoke
+children State{..} = buyCards ++ threeCoins ++ if cs <= 8 then twoCoins else [] ++ if Set.size (reserved $ hands ! player) < 3 then if cs <= 9 && joker bank > 0 then reserveds else reservedNoJoke else []
   where
     cs = bagSize (coins (hands ! player))
     buyCards = map (BuyCard . number) . Set.toList $ Set.filter canBuy (Set.union onTable (reserved (hands ! player)))
-    canBuy card = 0 == bagSize ((cost card `discount` cards (hands ! player)) `discount` coins (hands ! player))
+    canBuy card = (cards (hands ! player) `plus` coins (hands ! player)) `canAfford` (cost card)
+    --canBuy card = 0 == bagSize ((cost card `discount` cards (hands ! player)) `discount` coins (hands ! player))
     twoCoins = [TakeTwo Diamond | diamond bank >= 4]
-               ++ [TakeTwo Saphire | saphire bank >= 4]
+               ++ [TakeTwo Sapphire | saphire bank >= 4]
                ++ [TakeTwo Emerald | emerald bank >= 4]
                ++ [TakeTwo Ruby | ruby bank >= 4]
                ++ [TakeTwo Onyx | onyx bank >= 4]

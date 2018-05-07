@@ -54,12 +54,16 @@ lhf player state quiet (Just move) = do
   quiet $ print state'
   quiet $ putStrLn "Do: "
   print move
-  x <- catch @SomeException
-       (readLn :: IO Edit)
-       (\_ -> putStrLn "What?" >> mainloop player state quiet >> return Quit)
+  x <- readMove
   case x of
     Quit -> return ()
     other -> let (_, state'') = updateState other state' in mainloop player state'' quiet
 
 bestFrom :: State -> Int -> (Int, Maybe Edit)
 bestFrom state player = maxNode Min evalJoshua player state depth minBound maxBound
+
+readMove = do
+  x <- catch @SomeException
+       (readLn :: IO Edit)
+       (\_ -> putStrLn "\n\nWhat?\n\n" >> readMove)
+  return x
